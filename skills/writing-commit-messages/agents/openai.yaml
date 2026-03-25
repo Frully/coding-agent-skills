@@ -1,0 +1,14 @@
+interface:
+  display_name: "Writing Commit Messages"
+  category: "general"
+  short_description: "Draft commit messages from actual diffs."
+  default_prompt: "Use $writing-commit-messages to propose a commit message that matches this repository's style."
+
+policy:
+  sandbox: "inherit"
+  approvals: "inherit"
+  allow_implicit_invocation: true
+
+dependencies:
+  tools: []
+  mcp_servers: []
