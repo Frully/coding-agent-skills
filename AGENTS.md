@@ -1,0 +1,97 @@
+# AGENTS
+
+This file tells an agent how to create new skills in this repository.
+
+## Goal
+
+When asked to add a new skill, create a real skill under `skills/<slug>/` using the repository template and authoring rules.
+
+This repository is a source repository for skill definitions. It is not a runtime install directory.
+
+## Create-skill workflow
+
+1. Read [`spec/skill-authoring.md`](./spec/skill-authoring.md).
+2. Choose a focused workflow for the skill. Do not combine unrelated jobs into one skill.
+3. Create a new directory at `skills/<slug>/`.
+4. Start from [`template/SKILL.md`](./template/SKILL.md).
+5. Fill in the YAML frontmatter first:
+   - `name`
+   - `description`
+6. Write the body sections in this order unless there is a strong reason not to:
+   - `Overview`
+   - `When to use`
+   - `When not to use`
+   - `Instructions`
+   - `Examples`
+   - `Additional files`
+7. Add optional directories only when the skill actually needs them:
+   - `references/`
+   - `scripts/`
+   - `assets/`
+   - `agents/`
+8. Add [`template/agents/openai.yaml`](./template/agents/openai.yaml) only if the skill needs Codex-specific metadata.
+
+## Required output
+
+Every new skill must include:
+
+- `skills/<slug>/SKILL.md`
+
+That file is the primary source of truth. Do not create `skill.yaml` or any parallel primary manifest.
+
+## Naming rules
+
+- Use kebab-case for the directory name.
+- Use kebab-case for the `name` field.
+- Prefer action-oriented names, usually gerund or workflow style, such as `writing-documentation`.
+- Keep the skill narrow and specific.
+
+## Writing rules
+
+- Make `description` specific about both capability and trigger conditions.
+- Use direct, imperative instructions.
+- State required inputs, expected outputs, sequence, and boundaries.
+- Include non-goals when they help prevent accidental overreach.
+- Prefer short input/output examples over long explanations.
+- Keep `SKILL.md` concise and execution-oriented.
+
+## Progressive disclosure
+
+Keep the shortest useful version of the skill in `SKILL.md`.
+
+Only add side files when needed:
+
+- `references/` for long supporting material
+- `scripts/` for deterministic execution
+- `assets/` for templates or static resources
+- `agents/openai.yaml` for Codex-only metadata
+
+Do not create empty optional directories.
+
+## Compatibility rules
+
+- Shared skill behavior must live in `SKILL.md`.
+- Claude and Codex should both be able to use the shared `SKILL.md`.
+- Codex-specific metadata belongs in `agents/openai.yaml`.
+- Agent-specific extensions must not replace the shared instructions.
+
+## Non-goals
+
+When creating a new skill, do not:
+
+- add sample or fake skills for illustration
+- add `tests/` or validation tooling unless explicitly requested
+- turn the root of this repository into a runtime skill directory
+- split the core skill definition across multiple required files
+
+## Placement note
+
+This repository stores authored skills under `skills/`.
+
+Runtime environments typically load skills from other locations:
+
+- Codex: `.agents/skills`
+- Claude Code: `.claude/skills`
+- Claude plugins: plugin-local `skills/`
+
+Use [`spec/repository-layout.md`](./spec/repository-layout.md) if the task involves packaging or syncing a skill into a runtime location.

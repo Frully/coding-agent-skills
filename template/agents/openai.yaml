@@ -1,0 +1,14 @@
+# Optional Codex-specific metadata.
+# Keep shared skill behavior in ../SKILL.md and add only Codex-only details here.
+
+interface:
+  display_name: Your Skill Title
+  category: general
+
+policy:
+  sandbox: inherit
+  approvals: inherit
+
+dependencies:
+  tools: []
+  mcp_servers: []
