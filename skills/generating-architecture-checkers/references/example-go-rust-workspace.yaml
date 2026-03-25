@@ -1,0 +1,122 @@
+version: 1
+mode: monorepo
+
+summary:
+  inferred_from:
+    - go.work
+    - go.mod files
+    - cargo metadata
+    - package and crate import graph
+  user_confirmed: []
+  notes:
+    - Go services may depend on shared platform packages
+    - Rust domain crates must not depend on transport crates
+
+members:
+  - id: payments-go
+    path: services/payments-go
+    languages: [go]
+    role: service
+  - id: notifications-rust
+    path: services/notifications-rust
+    languages: [rust]
+    role: service
+
+zones:
+  - id: go-domain
+    member: payments-go
+    paths:
+      - services/payments-go/internal/domain/**
+    description: Go domain packages
+  - id: go-app
+    member: payments-go
+    paths:
+      - services/payments-go/internal/app/**
+    description: Go orchestration packages
+  - id: go-platform
+    member: payments-go
+    paths:
+      - services/payments-go/internal/platform/**
+    description: Go platform adapters
+  - id: rust-domain
+    member: notifications-rust
+    paths:
+      - services/notifications-rust/crates/domain/**
+    description: Rust domain crate and modules
+  - id: rust-transport
+    member: notifications-rust
+    paths:
+      - services/notifications-rust/crates/transport/**
+    description: Rust transport crate and modules
+  - id: rust-platform
+    member: notifications-rust
+    paths:
+      - services/notifications-rust/crates/platform/**
+    description: Rust platform crate and modules
+
+rules:
+  - id: go-domain-purity
+    kind: dependency
+    level: error
+    applies_to:
+      members: [payments-go]
+      files:
+        - services/payments-go/internal/domain/**
+    from:
+      zones: [go-domain]
+    allow:
+      zones: []
+    deny:
+      zones: [go-app, go-platform]
+    rationale: Go domain packages stay independent from orchestration and platform concerns.
+
+  - id: go-app-no-platform
+    kind: dependency
+    level: error
+    applies_to:
+      members: [payments-go]
+      files:
+        - services/payments-go/internal/app/**
+    from:
+      zones: [go-app]
+    allow:
+      zones: [go-domain]
+    deny:
+      zones: [go-platform]
+    rationale: Go application layer depends inward only.
+
+  - id: rust-domain-purity
+    kind: dependency
+    level: error
+    applies_to:
+      members: [notifications-rust]
+      files:
+        - services/notifications-rust/crates/domain/**
+    from:
+      zones: [rust-domain]
+    allow:
+      zones: []
+    deny:
+      zones: [rust-transport, rust-platform]
+    rationale: Rust domain crate stays isolated from transport and platform crates.
+
+  - id: rust-transport-may-use-platform
+    kind: dependency
+    level: error
+    applies_to:
+      members: [notifications-rust]
+      files:
+        - services/notifications-rust/crates/transport/**
+    from:
+      zones: [rust-transport]
+    allow:
+      zones: [rust-domain, rust-platform]
+    deny:
+      zones: []
+    rationale: Rust transport may compose domain and platform edges.
+
+exceptions: []
+
+baseline:
+  mode: report-only
+  source: .architecture-baseline.json
