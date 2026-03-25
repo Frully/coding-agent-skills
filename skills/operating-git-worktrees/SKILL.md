@@ -10,13 +10,21 @@ description: Create, reuse, sync, park, and clean up Git worktrees during active
 Use this skill as an operator runbook for day-to-day `git worktree` usage.
 
 - Keep the primary workspace on the repository's integration branch
-- Use one auxiliary worktree as a reusable task slot
+- Support two repository-local layouts under `<repo>/.worktrees/`: task-based and slot-based
+- Default to task-based worktrees unless the user explicitly wants a reusable slot
 - Create one short-lived branch per task in the auxiliary worktree
 - Merge the task branch back into the correct integration or protected branch
 - Delete the task branch after merge
 - Park the auxiliary worktree when idle, or immediately reuse it for the next task
 
 In many repositories the integration branch is `main`. If the repository uses Git Flow, treat `develop` as the usual base for `feature/*` work, and use `main` for `hotfix/*` or release-related work.
+
+Use these two layout modes explicitly:
+
+- Task-based: one directory per task, such as `.worktrees/writing-commit-messages` or `.worktrees/feature-auth-cleanup`
+- Slot-based: a small fixed set of reusable directories, such as `.worktrees/slot-1` or `.worktrees/review-slot`
+
+Task-based mode is the default. Use slot-based mode only when the user wants a stable reusable worktree path.
 
 This model keeps branch ownership clear, avoids stale assumptions about the active base branch, and makes cleanup routine instead of optional.
 
@@ -66,6 +74,8 @@ Use preflight to answer these questions:
 
 - Which directory is the primary workspace?
 - Which branch is the current integration base for this task?
+- Should this use task-based or slot-based layout?
+- Should the default worktree root be `<repo>/.worktrees/` for this task?
 - Is the auxiliary worktree on a branch or detached `HEAD`?
 - Does the auxiliary worktree have uncommitted changes?
 - Is the branch you want already checked out in another worktree?
@@ -93,6 +103,11 @@ Before creating a task branch, decide the correct base branch and naming scheme 
 - Git Flow hotfix work: base from `main`, use `hotfix/<version-or-slug>`
 - Git Flow release work: base from `develop` or the repo's release start point, use `release/<version>`
 
+Then decide the worktree directory strategy:
+
+- task-based: default when the user wants a fresh directory per task
+- slot-based: use only when the user asks to reuse a stable worktree path across tasks
+
 ### 2. Choose the mode
 
 Choose exactly one mode based on current state:
@@ -105,14 +120,29 @@ Choose exactly one mode based on current state:
 
 ### 3. Create a new auxiliary worktree
 
+If the user does not specify a location, create the new worktree under `<repo>/.worktrees/`.
+
+Before creating a worktree inside the repository, ensure `.gitignore` ignores that root:
+
+```bash
+scripts/ensure_worktree_root.sh --repo <repo>
+```
+
+Choose the directory naming mode explicitly:
+
+- task-based: derive the directory name from the task or branch slug, such as `.worktrees/auth-ui-align` or `.worktrees/feature-writing-commit-messages`
+- slot-based: use a stable reusable directory name, such as `.worktrees/slot-1` or `.worktrees/review-slot`
+
 From the primary workspace:
 
 ```bash
-git switch <base-branch>
-git fetch --prune
-git pull
-git worktree add -b <task-branch> <worktree-path> <base-branch>
+scripts/create_worktree.sh --repo <repo> --base <base-branch> --branch <task-branch> --mode <task|slot> --name <task-name-or-slot-name>
 ```
+
+When the location is not specified:
+
+- task-based mode: substitute `<worktree-path>` with `.worktrees/<task-name>`
+- slot-based mode: substitute `<worktree-path>` with `.worktrees/<slot-name>`
 
 Then in the new auxiliary worktree:
 
@@ -120,6 +150,8 @@ Then in the new auxiliary worktree:
 git status
 git branch --show-current
 ```
+
+If you need a non-default path, pass `--path <worktree-path>` to `scripts/create_worktree.sh`.
 
 ### 4. Reuse an existing auxiliary worktree
 
@@ -136,14 +168,12 @@ If the worktree is dirty, stop and resolve that state before switching tasks.
 - stash the current task work if the branch will resume later
 - discard only after confirming the worktree does not contain needed changes
 
+Reuse is normal in slot-based mode. In task-based mode, prefer creating a new worktree for a new task unless the user explicitly wants to recycle the old directory.
+
 If the worktree is clean, update the primary workspace and then create a fresh task branch inside the auxiliary worktree from the latest base-branch commit:
 
 ```bash
-git switch <base-branch>
-git fetch --prune
-git pull
-git -C <worktree-path> switch --detach <base-branch>
-git -C <worktree-path> switch -c <task-branch>
+scripts/reuse_worktree_slot.sh --repo <repo> --base <base-branch> --branch <task-branch> --slot <slot-name>
 ```
 
 If the desired task branch name already exists, either delete the old merged branch first or choose a new branch name. Do not stack unrelated work on the old branch.
@@ -270,7 +300,10 @@ Only remove the corresponding task branch after it is no longer checked out anyw
 
 - Delete merged task branches promptly
 - Retire or remove worktrees that no longer serve a task
-- Keep the auxiliary worktree on at most one active task branch
+- Keep each auxiliary worktree on at most one active task branch
+- Keep repository-local worktrees under `.worktrees/` unless the user asks for a different layout
+- In task-based mode, remove completed worktrees promptly unless the user wants to keep them
+- In slot-based mode, keep the slot path but park it detached or immediately repurpose it for the next task
 - Re-check `git worktree list` after cleanup if branch ownership was unclear
 - Re-check remote state before deleting local branches that were integrated through a PR merge
 
@@ -285,45 +318,49 @@ Do not leave completed work sitting on a stale task branch waiting for "later."
 
 - active development on a long-lived detached `HEAD`
 - one permanent feature branch being reused for unrelated tasks
+- slot-based layout used without explicit cleanup or repurposing discipline
 - an assumption that auxiliary worktrees auto-follow the current base branch
 - the same branch being checked out in two worktrees
 - branch deletion attempted before the branch is released from all worktrees
 
 ## Examples
 
-Create a fresh auxiliary worktree and task branch in a repo that works directly from `main`:
+Create a fresh task-based worktree and task branch in a repo that works directly from `main`:
 
 ```bash
-git switch main
-git fetch --prune
-git pull
-git worktree add -b auth-ui-align ../repo-auth-ui-align main
+scripts/ensure_worktree_root.sh --repo /path/to/repo
+scripts/create_worktree.sh --repo /path/to/repo --base main --branch auth-ui-align --mode task --name auth-ui-align
 ```
 
-Reuse an existing auxiliary worktree for a new Git Flow feature branch:
+Create a reusable slot-based worktree for Git Flow feature work:
 
 ```bash
-git switch develop
-git fetch --prune
-git pull
-git -C ../repo-slot status
-git -C ../repo-slot switch --detach develop
-git -C ../repo-slot switch -c feature/ghcr-fix
+scripts/ensure_worktree_root.sh --repo /path/to/repo
+scripts/create_worktree.sh --repo /path/to/repo --base develop --branch feature/ghcr-fix --mode slot --name slot-1
 ```
 
-Handle a dirty reusable worktree by stashing before reuse:
+Reuse an existing slot-based worktree for a new Git Flow feature branch:
 
 ```bash
-git -C ../repo-slot status
-git -C ../repo-slot stash push -u -m "resume-later"
-git -C ../repo-slot switch --detach develop
-git -C ../repo-slot switch -c feature/auth-cleanup
+scripts/reuse_worktree_slot.sh --repo /path/to/repo --base develop --branch feature/ghcr-fix --slot slot-1
+```
+
+Handle a dirty slot-based worktree by stashing before reuse:
+
+```bash
+scripts/reuse_worktree_slot.sh --repo /path/to/repo --base develop --branch feature/auth-cleanup --slot slot-1 --dirty-action stash --stash-message "resume-later"
 ```
 
 Recover when branch deletion fails because it is still checked out:
 
 ```bash
 git worktree list
-git -C ../repo-slot switch --detach develop
+git -C .worktrees/slot-1 switch --detach develop
 git branch -d feature/ghcr-fix
 ```
+
+## Additional files
+
+- `scripts/ensure_worktree_root.sh`: create a repository-local worktree root and keep `/.worktrees/` in `.gitignore`
+- `scripts/create_worktree.sh`: create a new task-based or slot-based worktree from a local base branch
+- `scripts/reuse_worktree_slot.sh`: reuse a slot-based worktree by checking cleanliness, optionally stashing, detaching to base, and creating a new task branch
