@@ -29,7 +29,7 @@ This repository is a source repository for skill definitions. It is not a runtim
    - `scripts/`
    - `assets/`
    - `agents/`
-8. Add [`template/agents/openai.yaml`](./template/agents/openai.yaml) only if the skill needs Codex-specific metadata.
+8. Add [`template/agents/openai.yaml`](./template/agents/openai.yaml) only if the skill needs optional Codex-specific metadata. Never make it required for the core workflow.
 
 ## Required output
 
@@ -43,7 +43,10 @@ That file is the primary source of truth. Do not create `skill.yaml` or any para
 
 - Use kebab-case for the directory name.
 - Use kebab-case for the `name` field.
-- Prefer action-oriented names, usually gerund or workflow style, such as `writing-documentation`.
+- Use short, action-oriented, workflow-style names that read naturally as a callable skill or command.
+- Prefer gerund or task-command style names, such as `writing-documentation`, `fixing-build-failures`, or `migrate-component`.
+- Do not use broad domain-only or topic-only names such as `git`, `documentation`, or `frontend`.
+- Keep the name aligned to one focused workflow, not a bundle of unrelated tasks.
 - Keep the skill narrow and specific.
 
 ## Writing rules
@@ -71,9 +74,10 @@ Do not create empty optional directories.
 ## Compatibility rules
 
 - Shared skill behavior must live in `SKILL.md`.
-- Claude and Codex should both be able to use the shared `SKILL.md`.
+- Every skill must be compatible with both CODEX and Claude Code through the shared `SKILL.md`.
+- Core workflow instructions must rely on portable tools and text instructions, not agent-specific UI, orchestration, or metadata files.
 - Codex-specific metadata belongs in `agents/openai.yaml`.
-- Agent-specific extensions must not replace the shared instructions.
+- Agent-specific extensions must remain optional and must not replace or redefine the shared instructions.
 
 ## Non-goals
 
