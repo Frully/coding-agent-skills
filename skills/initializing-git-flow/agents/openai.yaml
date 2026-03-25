@@ -1,0 +1,14 @@
+interface:
+  display_name: "Initializing Git Flow"
+  category: "general"
+  short_description: "Initialize or repair repository Git Flow configuration."
+  default_prompt: "Use $initializing-git-flow to set up or repair Git Flow configuration for this repository."
+
+policy:
+  sandbox: "inherit"
+  approvals: "inherit"
+  allow_implicit_invocation: true
+
+dependencies:
+  tools: []
+  mcp_servers: []

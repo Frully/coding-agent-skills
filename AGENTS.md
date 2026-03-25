@@ -28,16 +28,16 @@ This repository is a source repository for skill definitions. It is not a runtim
    - `references/`
    - `scripts/`
    - `assets/`
-   - `agents/`
-8. Add [`template/agents/openai.yaml`](./template/agents/openai.yaml) only if the skill needs optional Codex-specific metadata. Never make it required for the core workflow.
+8. Add [`template/agents/openai.yaml`](./template/agents/openai.yaml) to `skills/<slug>/agents/openai.yaml` for every skill. It is required for Codex compatibility, but it must remain secondary to `SKILL.md` and must not redefine the core workflow.
 
 ## Required output
 
 Every new skill must include:
 
 - `skills/<slug>/SKILL.md`
+- `skills/<slug>/agents/openai.yaml`
 
-That file is the primary source of truth. Do not create `skill.yaml` or any parallel primary manifest.
+`SKILL.md` is the primary source of truth. Do not create `skill.yaml` or any parallel primary manifest.
 
 ## Naming rules
 
@@ -70,9 +70,9 @@ Only add side files when needed:
 - `references/` for long supporting material
 - `scripts/` for deterministic execution
 - `assets/` for templates or static resources
-- `agents/openai.yaml` for Codex-only metadata
+- `agents/openai.yaml` for required Codex metadata
 
-Do not create empty optional directories.
+Do not create empty optional directories beyond the required `agents/` directory for Codex compatibility.
 
 ## Compatibility rules
 
@@ -80,6 +80,7 @@ Do not create empty optional directories.
 - Every skill must be compatible with both CODEX and Claude Code through the shared `SKILL.md`.
 - Core workflow instructions must rely on portable tools and text instructions, not agent-specific UI, orchestration, or metadata files.
 - Shared workflow instructions should not assume language runtimes such as Python or Node.js are available unless that requirement is central to the skill and clearly documented.
+- Every skill must include `agents/openai.yaml` for Codex compatibility.
 - Codex-specific metadata belongs in `agents/openai.yaml`.
 - Agent-specific extensions must remain optional and must not replace or redefine the shared instructions.
 

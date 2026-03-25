@@ -1,0 +1,14 @@
+interface:
+  display_name: "Operating Git Worktrees"
+  category: "general"
+  short_description: "Manage task-based and slot-based Git worktrees."
+  default_prompt: "Use $operating-git-worktrees to create, reuse, sync, park, or clean up Git worktrees for this repository."
+
+policy:
+  sandbox: "inherit"
+  approvals: "inherit"
+  allow_implicit_invocation: true
+
+dependencies:
+  tools: []
+  mcp_servers: []

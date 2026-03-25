@@ -36,7 +36,7 @@ Agents working inside this repository should also read [`AGENTS.md`](./AGENTS.md
 1. Read [`spec/skill-authoring.md`](./spec/skill-authoring.md).
 2. Copy `template/` into a new skill directory.
 3. Fill in `SKILL.md` first.
-4. Add `agents/openai.yaml` only if the skill needs Codex-specific metadata.
+4. Add `agents/openai.yaml` for Codex compatibility and keep it secondary to `SKILL.md`.
 5. Install or sync the finished skill into the runtime-specific location described in [`spec/repository-layout.md`](./spec/repository-layout.md).
 
 ## Design principles
