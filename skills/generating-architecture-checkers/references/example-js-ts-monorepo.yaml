@@ -1,0 +1,135 @@
+version: 1
+mode: monorepo
+
+summary:
+  inferred_from:
+    - pnpm-workspace.yaml
+    - package.json workspaces
+    - tsconfig path aliases
+    - dependency-cruiser graph
+  user_confirmed: []
+  notes:
+    - apps may depend on shared and platform packages
+    - feature packages must not import each other directly
+
+members:
+  - id: web
+    path: apps/web
+    languages: [ts]
+    role: app
+  - id: admin
+    path: apps/admin
+    languages: [ts]
+    role: app
+  - id: feature-billing
+    path: packages/feature-billing
+    languages: [ts]
+    role: library
+  - id: feature-orders
+    path: packages/feature-orders
+    languages: [ts]
+    role: library
+  - id: shared-ui
+    path: packages/shared-ui
+    languages: [ts]
+    role: library
+  - id: platform-api
+    path: packages/platform-api
+    languages: [ts]
+    role: library
+
+zones:
+  - id: app
+    paths:
+      - apps/*/src/**
+    description: Application entrypoints and composition layers
+  - id: feature
+    paths:
+      - packages/feature-*/src/**
+    description: Business feature packages
+  - id: shared
+    paths:
+      - packages/shared-*/src/**
+    description: Shared UI and generic helpers
+  - id: platform
+    paths:
+      - packages/platform-*/src/**
+    description: Infrastructure and external service adapters
+  - id: tests
+    paths:
+      - apps/*/src/**/*.test.ts
+      - packages/*/src/**/*.test.ts
+      - packages/*/src/**/*.spec.ts
+    description: Test-only files
+
+rules:
+  - id: app-dependencies
+    kind: dependency
+    level: error
+    applies_to:
+      members: [web, admin]
+      files:
+        - apps/*/src/**
+    from:
+      zones: [app]
+    allow:
+      zones: [feature, shared, platform]
+    deny:
+      zones: []
+    rationale: Apps compose features and shared infrastructure.
+
+  - id: feature-isolation
+    kind: dependency
+    level: error
+    applies_to:
+      members: [feature-billing, feature-orders]
+      files:
+        - packages/feature-*/src/**
+    from:
+      zones: [feature]
+    allow:
+      zones: [shared, platform]
+    deny:
+      zones: [feature, app]
+    rationale: Feature packages stay isolated from each other and from app code.
+
+  - id: shared-must-stay-generic
+    kind: dependency
+    level: error
+    applies_to:
+      files:
+        - packages/shared-*/src/**
+    from:
+      zones: [shared]
+    allow:
+      zones: []
+    deny:
+      zones: [feature, app]
+    rationale: Shared packages should not depend on business features or app composition.
+
+  - id: tests-may-reach-any-zone
+    kind: dependency
+    level: warn
+    applies_to:
+      files:
+        - apps/*/src/**/*.test.ts
+        - packages/*/src/**/*.test.ts
+        - packages/*/src/**/*.spec.ts
+    from:
+      zones: [tests]
+    allow:
+      zones: [app, feature, shared, platform]
+    deny:
+      zones: []
+    rationale: Test files may reach broader boundaries than production code.
+
+exceptions:
+  - id: shared-ui-analytics-bridge
+    rule: shared-must-stay-generic
+    targets:
+      - packages/shared-ui/src/analytics/bridge.ts
+    reason: Transitional bridge pending extraction into platform-api
+
+baseline:
+  mode: block-new
+  source: .architecture-baseline.json

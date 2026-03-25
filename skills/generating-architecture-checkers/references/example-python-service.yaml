@@ -1,0 +1,109 @@
+version: 1
+mode: single-repo
+
+summary:
+  inferred_from:
+    - pyproject.toml
+    - package imports
+    - existing pytest layout
+  user_confirmed:
+    - domain must not depend on adapters
+  notes:
+    - service uses a classic domain/application/adapters split
+
+members:
+  - id: service
+    path: .
+    languages: [python]
+    role: service
+
+zones:
+  - id: domain
+    member: service
+    paths:
+      - src/service/domain/**
+    description: Core business model and rules
+  - id: application
+    member: service
+    paths:
+      - src/service/application/**
+    description: Use cases and orchestration
+  - id: adapters
+    member: service
+    paths:
+      - src/service/adapters/**
+    description: External IO boundaries
+  - id: api
+    member: service
+    paths:
+      - src/service/api/**
+    description: Web and transport layer
+  - id: tests
+    member: service
+    paths:
+      - tests/**
+    description: Test code
+
+rules:
+  - id: domain-purity
+    kind: dependency
+    level: error
+    applies_to:
+      files:
+        - src/service/domain/**
+    from:
+      zones: [domain]
+    allow:
+      zones: []
+    deny:
+      zones: [application, adapters, api]
+    rationale: Domain code stays independent from orchestration and IO.
+
+  - id: application-boundary
+    kind: dependency
+    level: error
+    applies_to:
+      files:
+        - src/service/application/**
+    from:
+      zones: [application]
+    allow:
+      zones: [domain]
+    deny:
+      zones: [adapters, api]
+    rationale: Application code may depend on domain but not on delivery or persistence details.
+
+  - id: api-placement
+    kind: placement
+    level: error
+    applies_to:
+      files:
+        - src/service/**/views.py
+        - src/service/**/routes.py
+    from:
+      zones: [api]
+    allow:
+      zones: [api]
+    deny:
+      zones: [domain, application, adapters]
+    rationale: Transport entrypoints belong under the API layer.
+
+  - id: tests-broader-access
+    kind: dependency
+    level: warn
+    applies_to:
+      files:
+        - tests/**
+    from:
+      zones: [tests]
+    allow:
+      zones: [domain, application, adapters, api]
+    deny:
+      zones: []
+    rationale: Tests may depend on broader layers.
+
+exceptions: []
+
+baseline:
+  mode: off
+  source: .architecture-baseline.json
