@@ -20,6 +20,7 @@ description: Briefly state what this skill does and when an agent should use it.
 ## Instructions
 
 <!-- Write imperative, ordered instructions. Keep them specific about inputs, outputs, sequence, and boundaries. -->
+<!-- Prefer portable shell commands and plain text steps. Avoid assuming Python, Node.js, or other environment-specific runtimes unless they are essential and explicitly documented. -->
 
 ## Examples
 
@@ -32,4 +33,5 @@ description: Briefly state what this skill does and when an agent should use it.
 - `scripts/` for deterministic execution
 - `assets/` for templates or static resources
 - `agents/openai.yaml` for Codex-specific metadata
+Avoid adding scripts that require Python, Node.js, or other environment-specific runtimes unless the dependency is essential and clearly called out in the skill.
 -->

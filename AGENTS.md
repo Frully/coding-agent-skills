@@ -54,6 +54,9 @@ That file is the primary source of truth. Do not create `skill.yaml` or any para
 - Make `description` specific about both capability and trigger conditions.
 - Use direct, imperative instructions.
 - State required inputs, expected outputs, sequence, and boundaries.
+- Prefer workflows that work with portable shell commands and plain text instructions.
+- Avoid making a skill depend on environment-specific runtimes or tools such as Python, Node.js, or agent-local package managers unless the dependency is essential to the workflow.
+- If a non-portable dependency is truly required, mention it in `SKILL.md`, keep it optional when possible, and put detailed rationale or fallback guidance in referenced additional files when needed.
 - Include non-goals when they help prevent accidental overreach.
 - Prefer short input/output examples over long explanations.
 - Keep `SKILL.md` concise and execution-oriented.
@@ -76,6 +79,7 @@ Do not create empty optional directories.
 - Shared skill behavior must live in `SKILL.md`.
 - Every skill must be compatible with both CODEX and Claude Code through the shared `SKILL.md`.
 - Core workflow instructions must rely on portable tools and text instructions, not agent-specific UI, orchestration, or metadata files.
+- Shared workflow instructions should not assume language runtimes such as Python or Node.js are available unless that requirement is central to the skill and clearly documented.
 - Codex-specific metadata belongs in `agents/openai.yaml`.
 - Agent-specific extensions must remain optional and must not replace or redefine the shared instructions.
 

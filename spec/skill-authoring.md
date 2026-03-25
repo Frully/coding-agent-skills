@@ -69,6 +69,9 @@ This structure aligns with the repository template and keeps discovery, boundari
 - Keep the skill execution-oriented.
 - Use direct, imperative instructions.
 - State inputs, outputs, order, and constraints explicitly.
+- Prefer portable shell commands and plain text instructions over environment-specific tooling.
+- Do not make Python, Node.js, or similar language runtimes a default dependency unless they are essential to the workflow being encoded.
+- If a non-portable dependency is unavoidable, mention it in `SKILL.md`, keep it optional when practical, and place detailed rationale or fallback guidance in referenced additional files when needed.
 - Add non-goals when they reduce accidental overreach.
 - Prefer examples that demonstrate successful execution instead of explanatory prose.
 
@@ -100,12 +103,15 @@ Do not create optional directories by default. Add them only when the skill need
 - Claude and Codex should share the same `SKILL.md`.
 - Codex-specific metadata belongs in `agents/openai.yaml`.
 - Agent-specific extensions must not replace the shared instructions.
+- Shared instructions should assume only broadly available tools unless the skill's core purpose requires a specific runtime or platform dependency.
 
 If a skill behaves differently across agents, keep the shared workflow in `SKILL.md` and isolate only the agent-specific metadata or policy.
 
 ## When to add scripts
 
 Add a script only when the task needs deterministic execution, repeatable local tooling, or a command sequence that is easy to get wrong.
+
+Prefer portable scripts or commands that do not assume Python, Node.js, or a language-specific toolchain is installed. If the workflow truly requires such a runtime, make the dependency explicit and explain why plain text instructions are not sufficient.
 
 Do not add scripts just to restate instructions in code.
 
@@ -133,4 +139,5 @@ Before considering a skill complete, confirm:
 - optional files are referenced from `SKILL.md`
 - the skill covers one workflow
 - examples show expected use
+- environment-specific dependencies are avoided or explicitly justified
 - Codex-only metadata, if any, is isolated in `agents/openai.yaml`
