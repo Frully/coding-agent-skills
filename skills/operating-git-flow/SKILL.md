@@ -9,6 +9,7 @@ description: Run day-to-day Git Flow feature, release, and hotfix workflows in a
 
 - read the repository's existing Git Flow config as the source of truth
 - proactively treat branch lifecycle requests as Git Flow work when the repo is already configured for Git Flow, even if the user does not mention `git flow` explicitly
+- treat the current working directory as the default execution context; start, publish, and finish branches in the current worktree unless the user explicitly asks to switch worktrees
 - prefer `git flow` commands when available, otherwise emulate the same lifecycle with plain `git`
 - choose direct finish or PR-based integration from the current task and repository constraints
 - keep tag naming consistent with `gitflow.prefix.versiontag` and stop on historical drift
@@ -33,6 +34,7 @@ Do not use this skill when:
 - the repo has not been initialized for Git Flow yet
 - branch names or prefixes need to be configured or repaired
 - the user explicitly asks to bypass Git Flow and use a one-off plain Git branch outside the configured lifecycle
+- the main question is which worktree to use, whether to create or reuse a slot, or how to move work between worktrees
 - the task is generic Git work unrelated to Git Flow lifecycle commands
 
 ## Instructions
@@ -60,6 +62,7 @@ git rev-parse --is-inside-work-tree
 git flow version
 git fetch --prune
 git status --porcelain
+pwd
 git branch --show-current
 git config --get gitflow.branch.master
 git config --get gitflow.branch.develop
@@ -68,6 +71,8 @@ git config --get-regexp '^gitflow\.'
 
 - If `gitflow.branch.master` or `gitflow.branch.develop` is missing, stop and use `initializing-git-flow`.
 - If the working tree is not clean before `start`, `publish`, `finish`, or cleanup operations, stop unless the user explicitly wants to proceed with those local changes.
+- Treat the current working directory as the active worktree. By default, execute the Git Flow action in that current worktree instead of jumping to the primary workspace or another slot.
+- Only switch to `operating-git-worktrees` when the user explicitly asks to create, reuse, move to, or choose a different worktree.
 - Read the configured production branch, integration branch, and prefix settings from Git config. Treat config as the default authority over vague historical habits.
 - Prefer the helper script as the standard entrypoint so the agent does not need to fan out into many separate shell calls for every routine Git Flow request.
 - Prefer the action checker before `start`, `publish`, or `finish` so the agent can catch missing branch names, duplicate versions, tag drift, and wrong-branch execution before running a mutating command.
