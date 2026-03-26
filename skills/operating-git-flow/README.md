@@ -20,6 +20,7 @@ The model gives every change a clear lifecycle — start, develop, integrate, re
 
 - Git Flow must already be initialized in the repository (`git flow version` succeeds and `gitflow.branch.*` config exists). If not, use the `initializing-git-flow` skill first.
 - The working tree should be clean before starting, publishing, or finishing any branch.
+- Finish operations should run non-interactively. Use `scripts/gitflow_finish_non_interactive.sh` instead of bare `git flow ... finish` so merge commits do not block on an editor.
 
 ## Three workflows at a glance
 
@@ -54,6 +55,8 @@ When the feature is ready, you have two options:
 - **Direct finish**: `Finish the add-login feature.` — the agent merges it into `develop`, deletes the feature branch, and pushes.
 - **PR-based**: `Publish add-login and open a PR into develop.` — the agent pushes the branch and creates a PR. After the PR is merged, the agent cleans up the branch.
 
+Under the hood, direct finish should use `scripts/gitflow_finish_non_interactive.sh --kind feature --name add-login` rather than bare `git flow feature finish add-login`.
+
 ## Step-by-step: Release workflow
 
 ### 1. Start a release
@@ -74,6 +77,8 @@ Fix last-minute issues, update changelogs, bump version numbers. Only release-cr
 - **Direct finish**: `Finish the current release.` — the agent merges into `main`, tags the release (respecting the configured tag prefix), merges back into `develop`, deletes the release branch, and pushes everything.
 - **PR-based**: `Publish the current release and open a PR into main.` — after the PR merges, the agent creates the tag, opens a follow-up PR into `develop`, and cleans up.
 
+For direct finish, the safe default is `scripts/gitflow_finish_non_interactive.sh --kind release --version <version> -- --message "Release <version>" --push`.
+
 ## Step-by-step: Hotfix workflow
 
 ### 1. Start a hotfix
@@ -93,6 +98,8 @@ Make the minimal fix needed. Keep the scope small — a hotfix is not the place 
 
 - **Direct finish**: `Finish the current hotfix.` — the agent merges into `main`, tags it, merges back into `develop`, deletes the hotfix branch, and pushes.
 - **PR-based**: `Publish the current hotfix and open a PR into main.` — same as release PR flow.
+
+For direct finish, the safe default is `scripts/gitflow_finish_non_interactive.sh --kind hotfix --version <version> -- --message "Hotfix <version>" --push`.
 
 ## Version and tag rules
 
