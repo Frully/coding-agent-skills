@@ -8,6 +8,7 @@ description: Run day-to-day Git Flow feature, release, and hotfix workflows in a
 ## Overview
 
 - read the repository's existing Git Flow config as the source of truth
+- proactively treat branch lifecycle requests as Git Flow work when the repo is already configured for Git Flow, even if the user does not mention `git flow` explicitly
 - prefer `git flow` commands when available, otherwise emulate the same lifecycle with plain `git`
 - choose direct finish or PR-based integration from the current task and repository constraints
 - keep tag naming consistent with `gitflow.prefix.versiontag` and stop on historical drift
@@ -17,6 +18,8 @@ description: Run day-to-day Git Flow feature, release, and hotfix workflows in a
 
 Use this skill when:
 
+- the user asks to create or rename a work branch in a repo that already has Git Flow configured
+- the user asks to publish, merge, finish, or clean up a branch and the repository appears to use Git Flow prefixes or lifecycle branches
 - starting a feature, release, or hotfix branch
 - publishing a Git Flow work branch to the remote
 - finishing a branch directly
@@ -29,6 +32,7 @@ Do not use this skill when:
 
 - the repo has not been initialized for Git Flow yet
 - branch names or prefixes need to be configured or repaired
+- the user explicitly asks to bypass Git Flow and use a one-off plain Git branch outside the configured lifecycle
 - the task is generic Git work unrelated to Git Flow lifecycle commands
 
 ## Instructions
@@ -51,6 +55,11 @@ git config --get-regexp '^gitflow\.'
 - If `gitflow.branch.master` or `gitflow.branch.develop` is missing, stop and use `initializing-git-flow`.
 - If the working tree is not clean before `start`, `publish`, `finish`, or cleanup operations, stop unless the user explicitly wants to proceed with those local changes.
 - Read the configured production branch, integration branch, and prefix settings from Git config. Treat config as the default authority over vague historical habits.
+- If the user asks for a new branch, publish, finish, merge-prep, release, or hotfix task and the repository is configured for Git Flow, switch into this workflow automatically instead of defaulting to ad hoc branch naming such as `codex/*`, `task/*`, or other personal prefixes.
+- Interpret vague requests by mapping them to the closest Git Flow lifecycle action:
+  - "create a branch for X", "start work on X", or "split this task into a branch" maps to feature start unless the request is clearly release or hotfix work
+  - "push this branch for review" or "make this branch available remotely" maps to feature, release, or hotfix publish based on the current branch type
+  - "wrap this up", "merge this branch back", or "complete this work" maps to feature, release, or hotfix finish after confirming whether direct finish or PR-based integration is expected
 - Choose execution mode explicitly:
   - use `git flow` mode when `git flow version` succeeds
   - use plain `git` mode when `git flow` is unavailable
