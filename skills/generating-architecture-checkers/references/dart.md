@@ -46,9 +46,15 @@ For melos or multi-package setups:
 
 ## False-positive controls
 
+- distinguish `package:` imports from relative imports before comparing boundaries
 - exclude generated `*.g.dart`, `*.freezed.dart`, and similar files
 - separate test imports from production rules
 - respect analyzer excludes already present in the repo
+- do not treat external package dependencies as internal architecture edges unless explicitly modeled
+
+## When not to insist on native tools
+
+If the repository only needs a minimal first step into an existing gate, a repo-local adapter may come before a full `custom_lint` setup, but the final report must note that decision and the upgrade path.
 
 ## Output hints
 

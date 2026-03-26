@@ -1,5 +1,7 @@
 version: 1
 mode: single-repo
+topology:
+  kind: package-graph
 
 summary:
   inferred_from:
@@ -106,4 +108,5 @@ exceptions: []
 
 baseline:
   mode: off
-  source: .architecture-baseline.json
+  path: .architecture-baseline.json
+  resolve_from: repo-root

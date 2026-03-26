@@ -48,9 +48,15 @@ For `go.work` or multi-module repos:
 
 ## False-positive controls
 
+- distinguish module-level boundaries from package-level boundaries before reporting a violation
 - ignore generated protobuf or mock packages
 - separate `_test.go` dependencies from production rules
 - respect `internal/` and build-tag conventions before adding custom restrictions
+- do not treat standard-library or external module imports as internal architecture edges
+
+## When not to insist on native tools
+
+If a full custom Go checker would be heavier than the repository needs for initial gate integration, start with the smallest repo-local adapter that still uses `go/packages` for resolution and document a stricter follow-up path.
 
 ## Output hints
 
