@@ -1,5 +1,7 @@
 # Operating Git Worktrees
 
+[中文版](./README.zh.md) | English
+
 A guide to using `git worktree` for parallel multi-agent development. For command-level instructions, see [SKILL.md](./SKILL.md).
 
 ## What a worktree is and why use it

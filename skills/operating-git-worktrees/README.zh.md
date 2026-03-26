@@ -1,5 +1,7 @@
 # Operating Git Worktrees
 
+中文 | [English](./README.md)
+
 使用 `git worktree` 实现多 agent 并行开发的指南。命令级操作说明见 [SKILL.md](./SKILL.md)。
 
 ## 什么是 worktree，为什么要用它
