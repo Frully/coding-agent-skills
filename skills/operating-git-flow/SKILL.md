@@ -76,6 +76,7 @@ git config --get-regexp '^gitflow\.'
 - Read the configured production branch, integration branch, and prefix settings from Git config. Treat config as the default authority over vague historical habits.
 - Prefer the helper script as the standard entrypoint so the agent does not need to fan out into many separate shell calls for every routine Git Flow request.
 - Prefer the action checker before `start`, `publish`, or `finish` so the agent can catch missing branch names, duplicate versions, tag drift, and wrong-branch execution before running a mutating command.
+- Treat `finish` as non-interactive by default. Do not invoke bare `git flow ... finish` if it could open an editor for merge commits or tag messages. Use `scripts/gitflow_finish_non_interactive.sh` or set `GIT_MERGE_AUTOEDIT=no GIT_EDITOR=:` explicitly.
 - If the user asks for a new branch, publish, finish, merge-prep, release, or hotfix task and the repository is configured for Git Flow, switch into this workflow automatically instead of defaulting to ad hoc branch naming such as `codex/*`, `task/*`, or other personal prefixes.
 - Interpret vague requests by mapping them to the closest Git Flow lifecycle action:
   - "create a branch for X", "start work on X", or "split this task into a branch" maps to feature start unless the request is clearly release or hotfix work
@@ -184,7 +185,7 @@ Feature finish directly:
 - `git flow` mode:
 
 ```bash
-git flow feature finish <name>
+scripts/gitflow_finish_non_interactive.sh --kind feature --name <name>
 git push origin "$(git config --get gitflow.branch.develop)"
 ```
 
@@ -245,7 +246,7 @@ Release finish directly:
 - `git flow` mode:
 
 ```bash
-git flow release finish -m "Release <version>" -p <version>
+scripts/gitflow_finish_non_interactive.sh --kind release --version <version> -- --message "Release <version>" --push
 ```
 
 - plain `git` mode:
@@ -257,10 +258,10 @@ production_branch="$(git config --get gitflow.branch.master)"
 develop_branch="$(git config --get gitflow.branch.develop)"
 tag_prefix="$(git config --get gitflow.prefix.versiontag)"
 git switch "$production_branch"
-git merge --no-ff "$release_branch"
+git merge --no-ff --no-edit "$release_branch"
 git tag -a "${tag_prefix}${version}" -m "Release ${version}"
 git switch "$develop_branch"
-git merge --no-ff "$release_branch"
+git merge --no-ff --no-edit "$release_branch"
 git branch -d "$release_branch"
 git push origin "$production_branch" "$develop_branch" --follow-tags
 git push origin --delete "$release_branch"
@@ -312,7 +313,7 @@ Hotfix finish directly:
 - `git flow` mode:
 
 ```bash
-git flow hotfix finish -m "Hotfix <version>" -p <version>
+scripts/gitflow_finish_non_interactive.sh --kind hotfix --version <version> -- --message "Hotfix <version>" --push
 ```
 
 - plain `git` mode:
@@ -324,10 +325,10 @@ production_branch="$(git config --get gitflow.branch.master)"
 develop_branch="$(git config --get gitflow.branch.develop)"
 tag_prefix="$(git config --get gitflow.prefix.versiontag)"
 git switch "$production_branch"
-git merge --no-ff "$hotfix_branch"
+git merge --no-ff --no-edit "$hotfix_branch"
 git tag -a "${tag_prefix}${version}" -m "Hotfix ${version}"
 git switch "$develop_branch"
-git merge --no-ff "$hotfix_branch"
+git merge --no-ff --no-edit "$hotfix_branch"
 git branch -d "$hotfix_branch"
 git push origin "$production_branch" "$develop_branch" --follow-tags
 git push origin --delete "$hotfix_branch"
@@ -369,7 +370,7 @@ Finish a release directly:
 - `git flow` mode:
 
 ```bash
-git flow release finish -m "Release 1.8.0" -p 1.8.0
+scripts/gitflow_finish_non_interactive.sh --kind release --version 1.8.0 -- --message "Release 1.8.0" --push
 ```
 
 - plain `git` mode:
@@ -381,10 +382,10 @@ production_branch="$(git config --get gitflow.branch.master)"
 develop_branch="$(git config --get gitflow.branch.develop)"
 tag_prefix="$(git config --get gitflow.prefix.versiontag)"
 git switch "$production_branch"
-git merge --no-ff "$release_branch"
+git merge --no-ff --no-edit "$release_branch"
 git tag -a "${tag_prefix}${version}" -m "Release ${version}"
 git switch "$develop_branch"
-git merge --no-ff "$release_branch"
+git merge --no-ff --no-edit "$release_branch"
 git branch -d "$release_branch"
 git push origin "$production_branch" "$develop_branch" --follow-tags
 git push origin --delete "$release_branch"
@@ -399,7 +400,7 @@ git flow release start 20260325-1937
 Finish a date/time release with a `v` tag prefix from Git Flow config:
 
 ```bash
-git flow release finish -m "Release 20260326-1336" -p 20260326-1336
+scripts/gitflow_finish_non_interactive.sh --kind release --version 20260326-1336 -- --message "Release 20260326-1336" --push
 ```
 
 Start and publish a hotfix:
@@ -424,4 +425,5 @@ git push origin :refs/tags/20260325-1937 refs/tags/v20260325-1937
 
 - `scripts/gitflow_preflight.sh`: one-command Git Flow preflight for repo state, config, branch role, and next-step guidance
 - `scripts/gitflow_check_action.sh`: action-level validation for feature, release, and hotfix start/publish/finish checks
+- `scripts/gitflow_finish_non_interactive.sh`: wrapper for `git flow ... finish` that disables interactive editors for merge commits and tag prompts
 - `agents/openai.yaml`: Codex UI metadata for invoking this skill
