@@ -56,9 +56,16 @@ For workspaces:
 
 ## False-positive controls
 
+- ignore CSS, SCSS, SVG, PNG, JSON, and similar non-code asset imports by default
 - resolve aliases before evaluating layer direction
+- resolve barrel files and re-exports before recording an architecture edge
 - separate test, storybook, and tooling files from production enforcement
 - exclude generated client code such as GraphQL or OpenAPI outputs
+- do not treat third-party package imports as internal architecture edges unless the rule explicitly targets them
+
+## When not to insist on native tools
+
+If the repository does not already depend on `dependency-cruiser` or the immediate goal is to hook one small check into the existing gate, start with a repo-local adapter and document the native-tool upgrade path.
 
 ## Output hints
 

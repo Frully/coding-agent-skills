@@ -1,0 +1,14 @@
+interface:
+  display_name: "Generating Architecture Checkers"
+  category: "general"
+  short_description: "Infer and enforce architecture boundaries from existing code."
+  default_prompt: "Use $generating-architecture-checkers to generate architecture checks for this repository. Infer boundaries from the current code and prefer AST-based tooling."
+
+policy:
+  sandbox: "inherit"
+  approvals: "inherit"
+  allow_implicit_invocation: true
+
+dependencies:
+  tools: []
+  mcp_servers: []

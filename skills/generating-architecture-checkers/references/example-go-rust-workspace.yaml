@@ -1,5 +1,7 @@
 version: 1
 mode: monorepo
+topology:
+  kind: mixed
 
 summary:
   inferred_from:
@@ -119,4 +121,5 @@ exceptions: []
 
 baseline:
   mode: report-only
-  source: .architecture-baseline.json
+  path: .architecture-baseline.json
+  resolve_from: repo-root

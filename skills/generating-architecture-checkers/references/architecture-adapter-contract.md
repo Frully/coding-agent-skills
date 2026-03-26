@@ -1,10 +1,10 @@
 # Architecture Adapter Contract
 
-Use this file when the target repository includes `architecture-rules.yaml` and you need the generated checks to execute accurately from that manifest.
+Use this file when the target repository includes an `architecture-rules.yaml` manifest and you need the generated checks to execute accurately from that manifest.
 
 ## Goal
 
-Treat `architecture-rules.yaml` as the repository-level architecture spec and generate a thin adapter layer that compiles the manifest into language-native enforcement.
+Treat the chosen `architecture-rules.yaml` manifest as the repository-level architecture spec and generate a thin adapter layer that compiles the manifest into language-native enforcement.
 
 The adapter layer is required whenever the native tool does not already consume the manifest directly.
 
@@ -16,8 +16,9 @@ The generated implementation must have these stages:
 2. Validate schema and required references.
 3. Resolve `members` and `zones` into concrete files, packages, namespaces, crates, or projects.
 4. Translate each `rule` into one or more native checks.
-5. Apply `exceptions` and `baseline`.
-6. Expose one stable entrypoint through `check-architecture`.
+5. Translate each explicit `extension` into a clearly scoped supplement when needed.
+6. Apply `exceptions` and `baseline`.
+7. Expose one stable entrypoint through `check-architecture`, preferably through the repository's existing gate surface.
 
 Do not skip any stage silently.
 
@@ -35,6 +36,7 @@ These fields are mandatory to support when present:
 - `rules.allow`
 - `rules.deny`
 - `rules.rationale`
+- `extensions`
 - `exceptions`
 - `baseline`
 
@@ -44,6 +46,7 @@ If a target tool cannot enforce one of these fields directly, the adapter must e
 - fail with a clear unsupported-rule error
 
 Ignoring fields is not allowed.
+If `extensions` are present, they must remain explicitly declared and traceable to the manifest.
 
 ## Resolution rules
 
@@ -77,6 +80,15 @@ For `kind: placement`:
 
 Use placement rules only for structural placement, not dependency direction.
 
+## Extension semantics
+
+For `extensions`:
+
+- use them only for gaps that cannot be expressed as structural `dependency` or `placement` rules
+- keep each extension tied to one explicit `engine`
+- treat them as manifest-declared supplements, not a hidden second rules source
+- list them separately in the final report
+
 ## Exceptions and baseline
 
 Exceptions must be applied after the main rule is resolved but before reporting final violations.
@@ -88,15 +100,17 @@ Baseline behavior:
 - `block-new`: allow baseline-listed historical violations but fail on new ones
 
 If `block-new` is used, the adapter must compare current violations against the baseline source.
+Use the path and identity rules from [baseline-format.md](baseline-format.md) instead of inventing a repository-specific comparison scheme.
 
 ## Adapter outputs
 
 The generated repository should contain:
 
-- `architecture-rules.yaml`
+- one `architecture-rules.yaml` manifest in the repository's natural config location
 - one adapter artifact or source directory that translates the manifest
 - one or more native checker artifacts derived from that adapter
 - one top-level `check-architecture` command
+- one short enforcement report covering gate integration, native enforcement, adapter enforcement, partial enforcement, and blind spots
 
 Prefer deterministic generation over handwritten duplicated configs.
 
@@ -117,9 +131,36 @@ The generated implementation must prove that the adapter is wired correctly.
 At minimum:
 
 - manifest parsing test or smoke check
+- one real rule per enforced member or runtime
 - one pass case
 - one fail case
 - one exception case if exceptions exist
 - one baseline case if baseline mode is not `off`
+- one false-positive regression case
+
+## Graceful degradation
+
+When a step in the contract cannot be completed, produce the best partial result instead of aborting.
+
+- if a native tool is unavailable, generate a repo-local adapter at Level 1 and note the native-tool upgrade path in the report
+- if the runtime environment cannot execute the generated checker, return all artifacts and separate what was validated statically from what requires a live run
+- if a manifest rule cannot be compiled into the available native tool, reject that rule explicitly with a clear unsupported-rule message instead of silently dropping it
+- if baseline comparison cannot run because the environment is missing, generate the baseline file shape and document the manual steps needed to populate it
+- if a mixed-language repo includes an unsupported language, generate checks for the supported languages and list the uncovered member under `blind-spots`
+
+Always report what was skipped and why so the user can close the gap later.
+
+## Final report requirements
+
+The generated implementation must explicitly report:
+
+- `gate-integration`: how the checker was connected to the repository's existing gate
+- `health-issues`: anti-patterns detected, corrections applied, and baseline violations produced (omit when no issues were found)
+- `native-enforced`: rules enforced directly by native tool surfaces
+- `adapter-enforced`: rules enforced by the repo-local adapter layer
+- `heuristic-or-partial`: rules that are only partially enforced
+- `blind-spots`: known semantic or structural gaps
+
+Do not imply semantic coverage that the implementation does not actually have.
 
 When the repo already has native tests, integrate adapter validation there instead of inventing a second test harness.

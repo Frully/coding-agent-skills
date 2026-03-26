@@ -1,5 +1,7 @@
 version: 1
 mode: monorepo
+topology:
+  kind: package-graph
 
 summary:
   inferred_from:
@@ -132,4 +134,5 @@ exceptions:
 
 baseline:
   mode: block-new
-  source: .architecture-baseline.json
+  path: .architecture-baseline.json
+  resolve_from: repo-root
