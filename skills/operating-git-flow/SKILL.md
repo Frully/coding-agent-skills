@@ -8,8 +8,9 @@ description: Run day-to-day Git Flow feature, release, and hotfix workflows in a
 ## Overview
 
 - read the repository's existing Git Flow config as the source of truth
-- use `git flow` commands for feature, release, and hotfix lifecycle operations
+- prefer `git flow` commands when available, otherwise emulate the same lifecycle with plain `git`
 - choose direct finish or PR-based integration from the current task and repository constraints
+- keep tag naming consistent with `gitflow.prefix.versiontag` and stop on historical drift
 - stop and route to `initializing-git-flow` if required Git Flow config is missing
 
 ## When to use
@@ -38,14 +39,22 @@ Check the repo before any lifecycle command:
 
 ```bash
 git rev-parse --is-inside-work-tree
+git flow version
 git fetch --prune
 git status --porcelain
 git branch --show-current
 git config --get gitflow.branch.master
 git config --get gitflow.branch.develop
+git config --get-regexp '^gitflow\.'
 ```
 
-If `gitflow.branch.master` or `gitflow.branch.develop` is missing, stop and use `initializing-git-flow`.
+- If `gitflow.branch.master` or `gitflow.branch.develop` is missing, stop and use `initializing-git-flow`.
+- If the working tree is not clean before `start`, `publish`, `finish`, or cleanup operations, stop unless the user explicitly wants to proceed with those local changes.
+- Read the configured production branch, integration branch, and prefix settings from Git config. Treat config as the default authority over vague historical habits.
+- Choose execution mode explicitly:
+  - use `git flow` mode when `git flow version` succeeds
+  - use plain `git` mode when `git flow` is unavailable
+- In plain `git` mode, derive all branch names and tag names from `gitflow.branch.*` and `gitflow.prefix.*`. Do not hard-code `main`, `develop`, `feature/`, `release/`, `hotfix/`, or `v`.
 
 ### 2. Enforce commit gate
 
@@ -55,25 +64,91 @@ Before committing:
 - avoid direct commits on the configured integration branch unless the repo explicitly allows it
 - prefer `feature/*`, `release/*`, `hotfix/*`, or configured equivalent prefixes for isolated work
 
-### 3. Feature workflow
+### 3. Resolve version and tag rules
+
+Only for release and hotfix operations that need a new version, inspect the repo before choosing a value:
+
+```bash
+git config --get gitflow.prefix.versiontag
+git tag --list --sort=version:refname | tail -n 20
+git branch -a | rg 'release/|hotfix/'
+```
+
+Choose the version and tag format in this order:
+
+- first determine whether the repository uses semantic versions such as `1.8.0` or date/time versions such as `20260326-1336`
+- keep the version style consistent with the existing repository history unless the user explicitly wants to change it
+- always apply the configured tag prefix from `gitflow.prefix.versiontag` when creating the release or hotfix tag
+- pass the raw version like `20260326-1336` or `1.8.0` to `git flow`; let Git Flow create the full tag name such as `v20260326-1336`
+
+If history and config disagree:
+
+- stop and call out the mismatch explicitly
+- ask whether to preserve the old history or repair the old tags and continue with the configured prefix
+- do not silently create a new tag pattern that conflicts with the repository's configured rule
+
+If the chosen style is semantic versioning:
+
+- for releases, bump `MAJOR` for breaking changes, `MINOR` for new backward-compatible capability, and `PATCH` for fixes or maintenance
+- for hotfixes, prefer the smallest safe bump: usually `PATCH`, `MINOR` only when the hotfix also ships a justified non-breaking feature, and `MAJOR` only when the repository explicitly accepts a breaking hotfix
+- do not choose a semantic version from elapsed time alone; base it on the actual change scope
+
+If the chosen style is date/time versioning:
+
+- use the user's locale time zone unless the repository already documents a different explicit convention
+- keep the date/time format consistent across branch names and tags
+- if the exact format cannot be inferred confidently, ask before creating the branch or tag
+
+### 4. Feature workflow
 
 Feature start:
+
+- `git flow` mode:
 
 ```bash
 git flow feature start <name>
 ```
 
+- plain `git` mode:
+
+```bash
+git switch "$(git config --get gitflow.branch.develop)"
+git switch -c "$(git config --get gitflow.prefix.feature)<name>"
+```
+
 Feature publish:
+
+- `git flow` mode:
 
 ```bash
 git flow feature publish <name>
 ```
 
+- plain `git` mode:
+
+```bash
+git push -u origin "$(git config --get gitflow.prefix.feature)<name>"
+```
+
 Feature finish directly:
+
+- `git flow` mode:
 
 ```bash
 git flow feature finish <name>
-git push origin <develop-branch>
+git push origin "$(git config --get gitflow.branch.develop)"
+```
+
+- plain `git` mode:
+
+```bash
+feature_branch="$(git config --get gitflow.prefix.feature)<name>"
+develop_branch="$(git config --get gitflow.branch.develop)"
+git switch "$develop_branch"
+git merge --no-ff "$feature_branch"
+git branch -d "$feature_branch"
+git push origin "$develop_branch"
+git push origin --delete "$feature_branch"
 ```
 
 Feature path with PR-based integration:
@@ -83,117 +158,146 @@ Feature path with PR-based integration:
 - merge using the repository's normal PR policy
 - delete the temporary feature branch after merge unless the repo explicitly keeps it
 
-### 4. Release workflow
+### 5. Release workflow
 
 Release start:
+
+- `git flow` mode:
 
 ```bash
 git flow release start <version>
 ```
 
-Only when a new release version must be chosen, inspect the repo's existing tags and release or hotfix branch names:
+- plain `git` mode:
 
 ```bash
-git tag --list | tail -n 20
-git branch -a | rg 'release/|hotfix/'
+git switch "$(git config --get gitflow.branch.develop)"
+git switch -c "$(git config --get gitflow.prefix.release)<version>"
 ```
 
-Choose the version identifier in this order:
-
-- first determine whether the repo uses semantic versions such as `1.8.0` or date/time versions such as `20260325-1937`
-- if the existing repo history clearly uses one style, keep using that style
-- if the style cannot be inferred confidently, ask the user which of the two version types to use before asking for a specific value
-
-If the chosen style is a semantic version, choose which digit to bump from the actual scope and impact of the release:
-
-- bump `MAJOR` when the release contains breaking changes, incompatible behavior, or contract changes that require coordinated updates
-- bump `MINOR` when the release adds new user-facing capability or meaningfully expands behavior without breaking existing usage
-- bump `PATCH` when the release is limited to fixes, polish, documentation, refactors, or narrow maintenance that should preserve existing behavior
-
-Do not guess a semantic version number from "time since last release" alone. Base the bump on what changed in the commits being released.
-
-If the chosen style is a date/time version:
-
-- use the user's locale time zone unless the repo already uses a different explicit convention
-- keep the format consistent across release branches and tags
-- if the exact format cannot be inferred, ask the user to confirm the preferred date/time format before creating the release
+- Before starting, confirm no existing release branch or final tag already uses that version.
 
 Release publish:
+
+- `git flow` mode:
 
 ```bash
 git flow release publish <version>
 ```
 
-Release finish directly:
+- plain `git` mode:
 
 ```bash
-git flow release finish <version>
-git push origin "$(git config --get gitflow.branch.master)" "$(git config --get gitflow.branch.develop)" --follow-tags
+git push -u origin "$(git config --get gitflow.prefix.release)<version>"
+```
+
+Release finish directly:
+
+- `git flow` mode:
+
+```bash
+git flow release finish -m "Release <version>" -p <version>
+```
+
+- plain `git` mode:
+
+```bash
+version=<version>
+release_branch="$(git config --get gitflow.prefix.release)$version"
+production_branch="$(git config --get gitflow.branch.master)"
+develop_branch="$(git config --get gitflow.branch.develop)"
+tag_prefix="$(git config --get gitflow.prefix.versiontag)"
+git switch "$production_branch"
+git merge --no-ff "$release_branch"
+git tag -a "${tag_prefix}${version}" -m "Release ${version}"
+git switch "$develop_branch"
+git merge --no-ff "$release_branch"
+git branch -d "$release_branch"
+git push origin "$production_branch" "$develop_branch" --follow-tags
+git push origin --delete "$release_branch"
 ```
 
 Release path with PR-based integration:
 
 - publish the release branch
 - open a PR from release into the configured production branch
-- create and push the release tag on the production branch if the repo requires it
+- create and push the prefixed release tag on the production branch if the repo requires it
 - open a follow-up PR from production into the integration branch
 - delete the temporary release branch after merge unless the repo explicitly keeps it
 
-### 5. Hotfix workflow
+### 6. Hotfix workflow
 
 Hotfix start:
+
+- `git flow` mode:
 
 ```bash
 git flow hotfix start <version>
 ```
 
-Only when a new hotfix version must be chosen, inspect the repo's existing tags and release or hotfix branch names:
+- plain `git` mode:
 
 ```bash
-git tag --list | tail -n 20
-git branch -a | rg 'release/|hotfix/'
+git switch "$(git config --get gitflow.branch.master)"
+git switch -c "$(git config --get gitflow.prefix.hotfix)<version>"
 ```
 
-Choose the version identifier in the same order as release workflow:
-
-- first determine whether the repo uses semantic versions or date/time versions
-- if the existing repo history clearly uses one style, keep using that style
-- if the style cannot be inferred confidently, ask the user which of the two version types to use before asking for a specific value
-
-If the chosen style is a semantic version, prefer the smallest safe bump for the hotfix:
-
-- bump `PATCH` for a backward-compatible fix
-- bump `MINOR` only when the hotfix also introduces a non-breaking new capability that justifies it
-- bump `MAJOR` only when the hotfix must ship a breaking correction and the repo explicitly accepts that release policy
-
-If the chosen style is a date/time version, keep the existing date/time format and time-zone convention consistent with prior releases.
+- Before starting, confirm no existing hotfix branch or final tag already uses that version.
 
 Hotfix publish:
+
+- `git flow` mode:
 
 ```bash
 git flow hotfix publish <version>
 ```
 
-Hotfix finish directly:
+- plain `git` mode:
 
 ```bash
-git flow hotfix finish <version>
-git push origin "$(git config --get gitflow.branch.master)" "$(git config --get gitflow.branch.develop)" --follow-tags
+git push -u origin "$(git config --get gitflow.prefix.hotfix)<version>"
+```
+
+Hotfix finish directly:
+
+- `git flow` mode:
+
+```bash
+git flow hotfix finish -m "Hotfix <version>" -p <version>
+```
+
+- plain `git` mode:
+
+```bash
+version=<version>
+hotfix_branch="$(git config --get gitflow.prefix.hotfix)$version"
+production_branch="$(git config --get gitflow.branch.master)"
+develop_branch="$(git config --get gitflow.branch.develop)"
+tag_prefix="$(git config --get gitflow.prefix.versiontag)"
+git switch "$production_branch"
+git merge --no-ff "$hotfix_branch"
+git tag -a "${tag_prefix}${version}" -m "Hotfix ${version}"
+git switch "$develop_branch"
+git merge --no-ff "$hotfix_branch"
+git branch -d "$hotfix_branch"
+git push origin "$production_branch" "$develop_branch" --follow-tags
+git push origin --delete "$hotfix_branch"
 ```
 
 Hotfix path with PR-based integration:
 
 - publish the hotfix branch
 - open a PR into the configured production branch
-- create and push the hotfix tag on the production branch if the repo requires it
+- create and push the prefixed hotfix tag on the production branch if the repo requires it
 - open a follow-up PR from production into the integration branch
 - delete the temporary hotfix branch after merge unless the repo explicitly keeps it
 
-### 6. Cleanup rules
+### 7. Cleanup rules
 
 - delete temporary work branches after finish or PR merge unless the repository explicitly keeps them
 - do not force-push shared branches such as the configured production or integration branch
 - if branch names or prefix expectations no longer match the repo config, stop and re-run `initializing-git-flow`
+- if you repaired historical tags to match config, push both the new tag and the old-tag deletion explicitly
 
 ## Examples
 
@@ -211,9 +315,28 @@ git flow feature publish add-login
 
 Finish a release directly:
 
+- `git flow` mode:
+
 ```bash
-git flow release finish 1.8.0
-git push origin "$(git config --get gitflow.branch.master)" "$(git config --get gitflow.branch.develop)" --follow-tags
+git flow release finish -m "Release 1.8.0" -p 1.8.0
+```
+
+- plain `git` mode:
+
+```bash
+version=1.8.0
+release_branch="$(git config --get gitflow.prefix.release)$version"
+production_branch="$(git config --get gitflow.branch.master)"
+develop_branch="$(git config --get gitflow.branch.develop)"
+tag_prefix="$(git config --get gitflow.prefix.versiontag)"
+git switch "$production_branch"
+git merge --no-ff "$release_branch"
+git tag -a "${tag_prefix}${version}" -m "Release ${version}"
+git switch "$develop_branch"
+git merge --no-ff "$release_branch"
+git branch -d "$release_branch"
+git push origin "$production_branch" "$develop_branch" --follow-tags
+git push origin --delete "$release_branch"
 ```
 
 Start a release with a date/time version:
@@ -222,9 +345,27 @@ Start a release with a date/time version:
 git flow release start 20260325-1937
 ```
 
+Finish a date/time release with a `v` tag prefix from Git Flow config:
+
+```bash
+git flow release finish -m "Release 20260326-1336" -p 20260326-1336
+```
+
 Start and publish a hotfix:
 
 ```bash
 git flow hotfix start 1.8.1
 git flow hotfix publish 1.8.1
 ```
+
+Repair an old incorrectly unprefixed tag before the next release:
+
+```bash
+git tag -a v20260325-1937 20260325-1937^{commit} -m "Release 20260325-1937"
+git tag -d 20260325-1937
+git push origin :refs/tags/20260325-1937 refs/tags/v20260325-1937
+```
+
+## Additional files
+
+- `agents/openai.yaml`: Codex UI metadata for invoking this skill
