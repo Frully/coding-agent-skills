@@ -1,0 +1,125 @@
+version: 1
+mode: monorepo
+topology:
+  kind: runtime-graph
+
+summary:
+  inferred_from:
+    - workspace manifests
+    - runtime directories
+    - import graphs
+    - existing verification entrypoints
+  user_confirmed: []
+  notes:
+    - runtime members are the primary top-level boundary
+    - the first delivery level uses one repo-local adapter hooked into the existing gate
+
+members:
+  - id: frontend
+    path: workspace/frontend
+    languages: [ts]
+    role: app
+  - id: backend
+    path: workspace/backend
+    languages: [go]
+    role: service
+  - id: mobile
+    path: workspace/mobile
+    languages: [dart]
+    role: app
+
+zones:
+  - id: frontend-feature
+    member: frontend
+    paths:
+      - workspace/frontend/src/features/**
+    description: Frontend feature modules
+  - id: frontend-platform
+    member: frontend
+    paths:
+      - workspace/frontend/src/platform/**
+    description: Frontend platform adapters
+  - id: backend-handler
+    member: backend
+    paths:
+      - workspace/backend/internal/handler/**
+    description: Backend transport layer
+  - id: backend-service
+    member: backend
+    paths:
+      - workspace/backend/internal/service/**
+    description: Backend service layer
+  - id: mobile-feature
+    member: mobile
+    paths:
+      - workspace/mobile/lib/features/**
+    description: Mobile feature modules
+  - id: mobile-platform
+    member: mobile
+    paths:
+      - workspace/mobile/lib/platform/**
+    description: Mobile platform adapters
+
+rules:
+  - id: frontend-feature-boundary
+    kind: dependency
+    level: error
+    applies_to:
+      members: [frontend]
+      files:
+        - workspace/frontend/src/features/**
+    from:
+      zones: [frontend-feature]
+    allow:
+      zones: [frontend-platform]
+    deny:
+      zones: []
+    rationale: Frontend feature code may depend on its platform layer but not on other runtimes.
+
+  - id: backend-handler-boundary
+    kind: dependency
+    level: error
+    applies_to:
+      members: [backend]
+      files:
+        - workspace/backend/internal/handler/**
+    from:
+      zones: [backend-handler]
+    allow:
+      zones: [backend-service]
+    deny:
+      zones: []
+    rationale: Backend handlers compose service logic but stay within backend runtime boundaries.
+
+  - id: mobile-feature-boundary
+    kind: dependency
+    level: error
+    applies_to:
+      members: [mobile]
+      files:
+        - workspace/mobile/lib/features/**
+    from:
+      zones: [mobile-feature]
+    allow:
+      zones: [mobile-platform]
+    deny:
+      zones: []
+    rationale: Mobile feature code stays inside the mobile runtime and its platform surface.
+
+extensions:
+  - id: backend-no-db-in-service
+    kind: content
+    engine: ast
+    owner: repo-local-adapter
+    applies_to:
+      files:
+        - workspace/backend/internal/service/**
+    description: Backend service files must not perform direct database access.
+    rationale: This semantic restriction cannot be expressed as a plain structural dependency rule.
+
+exceptions: []
+
+baseline:
+  mode: block-new
+  path: .architecture-baseline.json
+  resolve_from: repo-root
