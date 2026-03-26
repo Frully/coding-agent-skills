@@ -39,7 +39,21 @@ Do not use this skill when:
 
 ### 1. Preflight
 
-Check the repo before any lifecycle command:
+Run the helper first to collapse the routine checks into one deterministic command:
+
+```bash
+scripts/gitflow_preflight.sh --repo <repo>
+```
+
+Then validate the intended lifecycle action before mutating the repository:
+
+```bash
+scripts/gitflow_check_action.sh --repo <repo> --intent <start-feature|publish-feature|finish-feature|start-release|publish-release|finish-release|start-hotfix|publish-hotfix|finish-hotfix> [--name <slug>] [--version <value>]
+```
+
+Treat both helper outputs as stable `key=value` records. Parse fields such as `result`, `branch_role`, `recommended_action`, `recommended_command`, `blocker_count`, `blocker_*_code`, `warning_count`, and `warning_*_code` before deciding the next step.
+
+If the script is unavailable or you need the raw values for deeper inspection, run the underlying checks directly:
 
 ```bash
 git rev-parse --is-inside-work-tree
@@ -55,6 +69,8 @@ git config --get-regexp '^gitflow\.'
 - If `gitflow.branch.master` or `gitflow.branch.develop` is missing, stop and use `initializing-git-flow`.
 - If the working tree is not clean before `start`, `publish`, `finish`, or cleanup operations, stop unless the user explicitly wants to proceed with those local changes.
 - Read the configured production branch, integration branch, and prefix settings from Git config. Treat config as the default authority over vague historical habits.
+- Prefer the helper script as the standard entrypoint so the agent does not need to fan out into many separate shell calls for every routine Git Flow request.
+- Prefer the action checker before `start`, `publish`, or `finish` so the agent can catch missing branch names, duplicate versions, tag drift, and wrong-branch execution before running a mutating command.
 - If the user asks for a new branch, publish, finish, merge-prep, release, or hotfix task and the repository is configured for Git Flow, switch into this workflow automatically instead of defaulting to ad hoc branch naming such as `codex/*`, `task/*`, or other personal prefixes.
 - Interpret vague requests by mapping them to the closest Git Flow lifecycle action:
   - "create a branch for X", "start work on X", or "split this task into a branch" maps to feature start unless the request is clearly release or hotfix work
@@ -65,7 +81,26 @@ git config --get-regexp '^gitflow\.'
   - use plain `git` mode when `git flow` is unavailable
 - In plain `git` mode, derive all branch names and tag names from `gitflow.branch.*` and `gitflow.prefix.*`. Do not hard-code `main`, `develop`, `feature/`, `release/`, `hotfix/`, or `v`.
 
-### 2. Enforce commit gate
+### 2. Ask before crossing decision boundaries
+
+Stop and ask the user explicitly before continuing when any of these are true:
+
+- the helper returns any blocker code
+- the working tree is dirty and the user did not clearly authorize operating on top of local changes
+- the request says "finish", "merge", "wrap up", or similar but does not specify whether to use direct finish or PR-based integration
+- the next release or hotfix version cannot be inferred confidently from repository history and the user did not provide one
+- repository history and `gitflow.prefix.versiontag` disagree, including unprefixed historical tags where the config expects a prefix
+- the user asks to bypass the configured Git Flow lifecycle, use a non-configured branch name, or commit directly on the protected production or integration branch
+- a destructive cleanup step would delete a remote branch or tag and the user did not clearly request that cleanup path
+
+Continue without asking only when all of these are true:
+
+- the requested lifecycle action is explicit or can be mapped unambiguously from the user's wording
+- the helper returns no blockers
+- any warnings do not change repository policy and only confirm expected state, such as "already published"
+- the action does not require choosing between multiple valid integration paths
+
+### 3. Enforce commit gate
 
 Before committing:
 
@@ -73,7 +108,7 @@ Before committing:
 - avoid direct commits on the configured integration branch unless the repo explicitly allows it
 - prefer `feature/*`, `release/*`, `hotfix/*`, or configured equivalent prefixes for isolated work
 
-### 3. Resolve version and tag rules
+### 4. Resolve version and tag rules
 
 Only for release and hotfix operations that need a new version, inspect the repo before choosing a value:
 
@@ -108,7 +143,7 @@ If the chosen style is date/time versioning:
 - keep the date/time format consistent across branch names and tags
 - if the exact format cannot be inferred confidently, ask before creating the branch or tag
 
-### 4. Feature workflow
+### 5. Feature workflow
 
 Feature start:
 
@@ -167,7 +202,7 @@ Feature path with PR-based integration:
 - merge using the repository's normal PR policy
 - delete the temporary feature branch after merge unless the repo explicitly keeps it
 
-### 5. Release workflow
+### 6. Release workflow
 
 Release start:
 
@@ -234,7 +269,7 @@ Release path with PR-based integration:
 - open a follow-up PR from production into the integration branch
 - delete the temporary release branch after merge unless the repo explicitly keeps it
 
-### 6. Hotfix workflow
+### 7. Hotfix workflow
 
 Hotfix start:
 
@@ -301,7 +336,7 @@ Hotfix path with PR-based integration:
 - open a follow-up PR from production into the integration branch
 - delete the temporary hotfix branch after merge unless the repo explicitly keeps it
 
-### 7. Cleanup rules
+### 8. Cleanup rules
 
 - delete temporary work branches after finish or PR merge unless the repository explicitly keeps them
 - do not force-push shared branches such as the configured production or integration branch
@@ -313,6 +348,8 @@ Hotfix path with PR-based integration:
 Start a feature branch:
 
 ```bash
+scripts/gitflow_preflight.sh --repo <repo>
+scripts/gitflow_check_action.sh --repo <repo> --intent start-feature --name add-login
 git flow feature start add-login
 ```
 
@@ -363,7 +400,10 @@ git flow release finish -m "Release 20260326-1336" -p 20260326-1336
 Start and publish a hotfix:
 
 ```bash
+scripts/gitflow_preflight.sh --repo <repo>
+scripts/gitflow_check_action.sh --repo <repo> --intent start-hotfix --version 1.8.1
 git flow hotfix start 1.8.1
+scripts/gitflow_check_action.sh --repo <repo> --intent publish-hotfix --version 1.8.1
 git flow hotfix publish 1.8.1
 ```
 
@@ -377,4 +417,6 @@ git push origin :refs/tags/20260325-1937 refs/tags/v20260325-1937
 
 ## Additional files
 
+- `scripts/gitflow_preflight.sh`: one-command Git Flow preflight for repo state, config, branch role, and next-step guidance
+- `scripts/gitflow_check_action.sh`: action-level validation for feature, release, and hotfix start/publish/finish checks
 - `agents/openai.yaml`: Codex UI metadata for invoking this skill
