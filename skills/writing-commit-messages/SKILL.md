@@ -158,4 +158,4 @@ Split this into at least two commits before writing the message:
 
 ## Additional files
 
-- `agents/openai.yaml`: optional Codex-specific UI metadata and default invocation prompt
+- `agents/openai.yaml`: required Codex-specific UI metadata and default invocation prompt

@@ -1,0 +1,120 @@
+version: 1
+mode: monorepo
+
+summary:
+  inferred_from:
+    - settings.gradle
+    - solution and project references
+    - package and namespace graph
+  user_confirmed: []
+  notes:
+    - Java and C# projects use parallel clean-architecture layering
+
+members:
+  - id: billing-java
+    path: services/billing-java
+    languages: [java]
+    role: service
+  - id: identity-dotnet
+    path: services/identity-dotnet
+    languages: [csharp]
+    role: service
+
+zones:
+  - id: java-domain
+    member: billing-java
+    paths:
+      - services/billing-java/src/main/java/**/domain/**
+    description: Java domain packages
+  - id: java-application
+    member: billing-java
+    paths:
+      - services/billing-java/src/main/java/**/application/**
+    description: Java application packages
+  - id: java-infrastructure
+    member: billing-java
+    paths:
+      - services/billing-java/src/main/java/**/infrastructure/**
+    description: Java infrastructure packages
+  - id: csharp-domain
+    member: identity-dotnet
+    paths:
+      - services/identity-dotnet/src/**/Domain/**
+    description: C# domain projects and namespaces
+  - id: csharp-application
+    member: identity-dotnet
+    paths:
+      - services/identity-dotnet/src/**/Application/**
+    description: C# application projects and namespaces
+  - id: csharp-infrastructure
+    member: identity-dotnet
+    paths:
+      - services/identity-dotnet/src/**/Infrastructure/**
+    description: C# infrastructure projects and namespaces
+
+rules:
+  - id: java-domain-purity
+    kind: dependency
+    level: error
+    applies_to:
+      members: [billing-java]
+      files:
+        - services/billing-java/src/main/java/**/domain/**
+    from:
+      zones: [java-domain]
+    allow:
+      zones: []
+    deny:
+      zones: [java-application, java-infrastructure]
+    rationale: Java domain packages remain free of outer-layer dependencies.
+
+  - id: java-application-no-infra
+    kind: dependency
+    level: error
+    applies_to:
+      members: [billing-java]
+      files:
+        - services/billing-java/src/main/java/**/application/**
+    from:
+      zones: [java-application]
+    allow:
+      zones: [java-domain]
+    deny:
+      zones: [java-infrastructure]
+    rationale: Java application layer depends inward only.
+
+  - id: csharp-domain-purity
+    kind: dependency
+    level: error
+    applies_to:
+      members: [identity-dotnet]
+      files:
+        - services/identity-dotnet/src/**/Domain/**
+    from:
+      zones: [csharp-domain]
+    allow:
+      zones: []
+    deny:
+      zones: [csharp-application, csharp-infrastructure]
+    rationale: C# domain projects remain independent from outer layers.
+
+  - id: csharp-application-no-infra
+    kind: dependency
+    level: error
+    applies_to:
+      members: [identity-dotnet]
+      files:
+        - services/identity-dotnet/src/**/Application/**
+    from:
+      zones: [csharp-application]
+    allow:
+      zones: [csharp-domain]
+    deny:
+      zones: [csharp-infrastructure]
+    rationale: C# application projects depend on domain only.
+
+exceptions: []
+
+baseline:
+  mode: block-new
+  source: .architecture-baseline.json

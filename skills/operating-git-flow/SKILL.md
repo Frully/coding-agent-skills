@@ -98,9 +98,25 @@ git tag --list | tail -n 20
 git branch -a | rg 'release/|hotfix/'
 ```
 
-- if the repo clearly uses SemVer, keep using SemVer
-- if the repo clearly uses CalVer, keep using CalVer
-- if the style cannot be inferred confidently, ask the user for the next version instead of guessing
+Choose the version identifier in this order:
+
+- first determine whether the repo uses semantic versions such as `1.8.0` or date/time versions such as `20260325-1937`
+- if the existing repo history clearly uses one style, keep using that style
+- if the style cannot be inferred confidently, ask the user which of the two version types to use before asking for a specific value
+
+If the chosen style is a semantic version, choose which digit to bump from the actual scope and impact of the release:
+
+- bump `MAJOR` when the release contains breaking changes, incompatible behavior, or contract changes that require coordinated updates
+- bump `MINOR` when the release adds new user-facing capability or meaningfully expands behavior without breaking existing usage
+- bump `PATCH` when the release is limited to fixes, polish, documentation, refactors, or narrow maintenance that should preserve existing behavior
+
+Do not guess a semantic version number from "time since last release" alone. Base the bump on what changed in the commits being released.
+
+If the chosen style is a date/time version:
+
+- use the user's locale time zone unless the repo already uses a different explicit convention
+- keep the format consistent across release branches and tags
+- if the exact format cannot be inferred, ask the user to confirm the preferred date/time format before creating the release
 
 Release publish:
 
@@ -138,9 +154,19 @@ git tag --list | tail -n 20
 git branch -a | rg 'release/|hotfix/'
 ```
 
-- if the repo clearly uses SemVer, keep using SemVer
-- if the repo clearly uses CalVer, keep using CalVer
-- if the style cannot be inferred confidently, ask the user for the next version instead of guessing
+Choose the version identifier in the same order as release workflow:
+
+- first determine whether the repo uses semantic versions or date/time versions
+- if the existing repo history clearly uses one style, keep using that style
+- if the style cannot be inferred confidently, ask the user which of the two version types to use before asking for a specific value
+
+If the chosen style is a semantic version, prefer the smallest safe bump for the hotfix:
+
+- bump `PATCH` for a backward-compatible fix
+- bump `MINOR` only when the hotfix also introduces a non-breaking new capability that justifies it
+- bump `MAJOR` only when the hotfix must ship a breaking correction and the repo explicitly accepts that release policy
+
+If the chosen style is a date/time version, keep the existing date/time format and time-zone convention consistent with prior releases.
 
 Hotfix publish:
 
@@ -188,6 +214,12 @@ Finish a release directly:
 ```bash
 git flow release finish 1.8.0
 git push origin "$(git config --get gitflow.branch.master)" "$(git config --get gitflow.branch.develop)" --follow-tags
+```
+
+Start a release with a date/time version:
+
+```bash
+git flow release start 20260325-1937
 ```
 
 Start and publish a hotfix:

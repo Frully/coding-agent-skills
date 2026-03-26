@@ -32,6 +32,6 @@ description: Briefly state what this skill does and when an agent should use it.
 - `references/` for long supporting docs
 - `scripts/` for deterministic execution
 - `assets/` for templates or static resources
-- `agents/openai.yaml` for Codex-specific metadata
+- `agents/openai.yaml` for required Codex-specific metadata
 Avoid adding scripts that require Python, Node.js, or other environment-specific runtimes unless the dependency is essential and clearly called out in the skill.
 -->

@@ -1,0 +1,14 @@
+interface:
+  display_name: "Operating Git Flow"
+  category: "general"
+  short_description: "Run day-to-day Git Flow lifecycle operations safely."
+  default_prompt: "Use $operating-git-flow to start, publish, finish, or clean up Git Flow branches in this repository."
+
+policy:
+  sandbox: "inherit"
+  approvals: "inherit"
+  allow_implicit_invocation: true
+
+dependencies:
+  tools: []
+  mcp_servers: []

@@ -26,7 +26,7 @@ Those paths are runtime install locations. This repository is the source from wh
 
 1. Author or update a skill here.
 2. Keep shared instructions in `SKILL.md`.
-3. Add `agents/openai.yaml` only when Codex needs extra metadata.
+3. Add `agents/openai.yaml` for every skill so the authored skill stays Codex-compatible.
 4. Copy or sync the finished skill into the appropriate runtime directory.
 
 ## Layout used in this repository

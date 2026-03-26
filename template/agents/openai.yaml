@@ -1,4 +1,4 @@
-# Optional Codex-specific metadata.
+# Required Codex metadata for this repository.
 # Keep shared skill behavior in ../SKILL.md and add only Codex-only details here.
 
 interface:
